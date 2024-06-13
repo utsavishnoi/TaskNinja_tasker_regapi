@@ -1,34 +1,21 @@
 from rest_framework import serializers
-from .models import Company, User
+from .models import Tasker, User
 
-class CompanySerializer(serializers.ModelSerializer):
+class TaskerSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Company
-        fields = '__all__'
+        model = Tasker
+        fields = ['tasker_id', 'name', 'state', 'city', 'email', 'password', 'about', 'work', 'added_date']
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = '__all__'
+        fields = ['name', 'email', 'password', 'phone', 'state', 'city']
 
-    location = serializers.ChoiceField(choices=[])
+from rest_framework import serializers
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['location'].choices = self.get_location_choices()
-
-    def get_location_choices(self):
-        companies = Company.objects.values_list('location', flat=True).distinct()
-        return [(location, location) for location in companies]
-
-    def validate(self, data):
-        """
-        Check that the company type matches the user's work type.
-        """
-        company = data.get('company')
-        work = data.get('work')
-
-        if company and work and company.type != work:
-            raise serializers.ValidationError("The company type must match the user's work type.")
-
-        return data
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField()

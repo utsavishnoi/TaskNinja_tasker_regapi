@@ -3,8 +3,9 @@ from django.http import JsonResponse
 def home_page(request):
     print("home page requested")
     friends=[
-        'learning',
+        'Api Made',
         'at',
         'techahead'
     ]
     return JsonResponse(friends,safe=False)
+

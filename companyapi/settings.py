@@ -38,8 +38,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'api'
+    'api',
+    'corsheaders'
 ]
+
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -49,6 +52,14 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware'
+]
+CORS_ORIGIN_WHITELIST = [
+    'http://localhost:3000',  # The default port for create-react-app
+]
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+    # Add any other origins as needed
 ]
 
 ROOT_URLCONF = 'companyapi.urls'
@@ -123,3 +134,70 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.TokenAuthentication',
+        # Other authentication classes if needed
+    ),
+}
+
+STATES_AND_UTS_CHOICES = [
+        ('Andaman and Nicobar Islands', 'Andaman and Nicobar Islands'),
+        ('Andhra Pradesh', 'Andhra Pradesh'),
+        ('Arunachal Pradesh', 'Arunachal Pradesh'),
+        ('Assam', 'Assam'),
+        ('Bihar', 'Bihar'),
+        ('Chandigarh', 'Chandigarh'),
+        ('Chhattisgarh', 'Chhattisgarh'),
+        ('Dadra and Nagar Haveli', 'Dadra and Nagar Haveli'),
+        ('Daman and Diu', 'Daman and Diu'),
+        ('Delhi', 'Delhi'),
+        ('Goa', 'Goa'),
+        ('Gujarat', 'Gujarat'),
+        ('Haryana', 'Haryana'),
+        ('Himachal Pradesh', 'Himachal Pradesh'),
+        ('Jammu and Kashmir', 'Jammu and Kashmir'),
+        ('Jharkhand', 'Jharkhand'),
+        ('Karnataka', 'Karnataka'),
+        ('Kerala', 'Kerala'),
+        ('Ladakh', 'Ladakh'),
+        ('Lakshadweep', 'Lakshadweep'),
+        ('Madhya Pradesh', 'Madhya Pradesh'),
+        ('Maharashtra', 'Maharashtra'),
+        ('Manipur', 'Manipur'),
+        ('Meghalaya', 'Meghalaya'),
+        ('Mizoram', 'Mizoram'),
+        ('Nagaland', 'Nagaland'),
+        ('Odisha', 'Odisha'),
+        ('Puducherry', 'Puducherry'),
+        ('Punjab', 'Punjab'),
+        ('Rajasthan', 'Rajasthan'),
+        ('Sikkim', 'Sikkim'),
+        ('Tamil Nadu', 'Tamil Nadu'),
+        ('Telangana', 'Telangana'),
+        ('Tripura', 'Tripura'),
+        ('Uttar Pradesh', 'Uttar Pradesh'),
+        ('Uttarakhand', 'Uttarakhand'),
+        ('West Bengal', 'West Bengal')
+    ]
+
+SERVICES_CHOICES = [
+        ('Packers and Movers', 'Packers and Movers'),
+        ('Plumber', 'Plumber'),
+        ('Electrician', 'Electrician'),
+        ('Cleaning Services', 'Cleaning Services'),
+        ('Carpenters', 'Carpenters'),
+        ('Pest Control', 'Pest Control'),
+        ('Painters', 'Painters'),
+        ('AC Services', 'AC Services'),
+        ('Gardening', 'Gardening'),
+        ('Home Security', 'Home Security'),
+        ('Laundry', 'Laundry'),
+        ('Moving Services', 'Moving Services'),
+        ('Home Cleaning', 'Home Cleaning'),
+        ('Furniture Assembly', 'Furniture Assembly'),
+        ('Computer Repair', 'Computer Repair'),
+        ('Interior Design', 'Interior Design')
+    ]

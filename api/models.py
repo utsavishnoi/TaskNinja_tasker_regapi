@@ -1,69 +1,31 @@
+from django.conf import settings
 from django.db import models
 
-class Company(models.Model):
-    company_id = models.AutoField(primary_key=True)
+class Tasker(models.Model):
+    tasker_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=50)
-    location = models.CharField(max_length=50)
-    about = models.TextField()
-    phone=models.CharField(max_length=10)
-    email=models.EmailField(max_length=100)
-    work = models.CharField(
-        max_length=100,
-        choices=[
-            ('Plumber', 'Plumber'),
-            ('Packers and Movers', 'Packers and Movers'),
-            ('Electrician', 'Electrician'),
-            ('Cleaning Services', 'Cleaning Services'),
-            ('Carpenters', 'Carpenters'),
-            ('Pest Control', 'Pest Control'),
-            ('Painters', 'Painters'),
-            ('AC Services', 'AC Services'),
-            ('Gardening', 'Gardening'),
-            ('Home Security', 'Home Security'),
-            ('Laundry', 'Laundry'),
-            ('Moving Services', 'Moving Services'),
-            ('Home Cleaning', 'Home Cleaning'),
-            ('Furniture Assembly', 'Furniture Assembly'),
-            ('Computer Repair', 'Computer Repair'),
-            ('Interior Design', 'Interior Design'),
-        ]
-    )
+    email = models.EmailField(unique=True, max_length=100)
+    password = models.CharField(max_length=128)
+    state = models.CharField(max_length=50, choices=settings.STATES_AND_UTS_CHOICES)
+    city = models.CharField(max_length=50)
+    about = models.TextField(blank=True)  # Optional field
+    work = models.CharField(max_length=100, choices=settings.SERVICES_CHOICES)
     added_date = models.DateTimeField(auto_now=True)
-    active = models.BooleanField(default=True)
 
     def __str__(self):
-        return self.name+'--'+ self.location
-
+        return self.name
 
 class User(models.Model):
     name = models.CharField(max_length=100)
-    email = models.EmailField(max_length=100)
-    address = models.CharField(max_length=500)
+    email = models.EmailField(unique=True, max_length=100)
+    password = models.CharField(max_length=128)
     phone = models.CharField(max_length=10)
-    location = models.CharField(max_length=50)
-    work = models.CharField(
-        max_length=100,
-        choices=[
-            ('Plumber', 'Plumber'),
-            ('Packers and Movers', 'Packers and Movers'),
-            ('Electrician', 'Electrician'),
-            ('Cleaning Services', 'Cleaning Services'),
-            ('Carpenters', 'Carpenters'),
-            ('Pest Control', 'Pest Control'),
-            ('Painters', 'Painters'),
-            ('AC Services', 'AC Services'),
-            ('Gardening', 'Gardening'),
-            ('Home Security', 'Home Security'),
-            ('Laundry', 'Laundry'),
-            ('Moving Services', 'Moving Services'),
-            ('Home Cleaning', 'Home Cleaning'),
-            ('Furniture Assembly', 'Furniture Assembly'),
-            ('Computer Repair', 'Computer Repair'),
-            ('Interior Design', 'Interior Design'),
-        ]
-    )
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    state = models.CharField(max_length=50, choices=settings.STATES_AND_UTS_CHOICES)
+    city = models.CharField(max_length=50)
+    work = models.CharField(max_length=100, choices=settings.SERVICES_CHOICES)
+    added_date = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.name 
+        return self.name
+
 
