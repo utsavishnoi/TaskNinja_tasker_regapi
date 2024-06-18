@@ -42,8 +42,9 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACESS TOKEN LIFETIME": timedelta(minutes=30),
+    "ACCESS TOKEN LIFETIME": timedelta(minutes=30),
     "REFRESH TOKEN LIFETIME": timedelta(days=1),
+    'AUTH_HEADER_TYPES': ('Bearer')
 }
 
 
@@ -70,7 +71,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
+    "corsheaders.middleware.CorsMiddleware"
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -100,7 +101,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'userdatatask_db',
+        'NAME': 'user_tasker_db',
         'USER': 'root',
         'PASSWORD': 'tech@901',
         'HOST': 'localhost',
@@ -220,3 +221,39 @@ SERVICES_CHOICES = [
         ('Computer Repair', 'Computer Repair'),
         ('Interior Design', 'Interior Design')
     ]
+
+
+# settings.py
+
+# Logging configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        # Define the file handler for django_errors.log
+        'file': {
+            'level': 'DEBUG',  # Set the desired logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+            'class': 'logging.FileHandler',
+            'filename': 'django_errors.log',  # Specify the path to your log file
+            'formatter': 'verbose',
+        },
+    },
+    'formatters': {
+        'verbose': {
+            'format': '{asctime} {levelname} {message} {name}',
+            'style': '{',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'DEBUG',  # Set the desired logging level for the Django logger
+            'propagate': True,
+        },
+        'authe': {  # Replace 'your_app_name' with the name of your Django app
+            'handlers': ['file'],
+            'level': 'DEBUG',  # Set the desired logging level for your app's logger
+            'propagate': True,
+        },
+    },
+}
