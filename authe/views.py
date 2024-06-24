@@ -52,20 +52,50 @@ class HomeView(APIView):
         return Response(content)
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def list_taskers_by_service(request, service_name):
     try:
-        taskers = CustomUser.objects.filter(user_type='tasker', service=service_name).values('first_name', 'last_name', 'service', 'contact_number', 'about','price')
+        # Fetch taskers based on the service name
+        taskers = CustomUser.objects.filter(user_type='tasker', service=service_name)
+        
         if taskers.exists():
-            return Response(taskers, status=status.HTTP_200_OK)
+            # Serialize taskers with their addresses
+            serializer = TaskerSerializer(taskers, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         else:
             return Response({"error": "No taskers found for this service."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def taskerdata(request):
     user = request.user
     tasker_serializer = TaskerSerializer(user)
     return Response(tasker_serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def userdata(request):
+    user = request.user
+    user_serializer = CustomUserSerializer(user)
+    return Response(user_serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_tasker(request, user_id):
+    try:
+        tasker = CustomUser.objects.get(id=user_id, user_type='tasker')
+        
+        # Check if the user making the request is allowed to delete the tasker
+        if request.user.is_staff or request.user == tasker:
+            tasker.delete()
+            return Response({"message": "Tasker account deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response({"error": "You do not have permission to delete this tasker."}, status=status.HTTP_403_FORBIDDEN)
+    except CustomUser.DoesNotExist:
+        return Response({"error": "Tasker not found."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
