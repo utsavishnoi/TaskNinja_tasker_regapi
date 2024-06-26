@@ -7,7 +7,7 @@ from .serializers import CustomUserSerializer,TaskerSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import CustomUser
-
+from urllib.parse import unquote
 # class CreateUserView(generics.CreateAPIView):
 #     queryset = CustomUser.objects.all()
 #     serializer_class = CustomUserSerializer
@@ -55,6 +55,7 @@ class HomeView(APIView):
 @permission_classes([IsAuthenticated])
 def list_taskers_by_service(request, service_name):
     try:
+        service_name = unquote(service_name)
         # Fetch taskers based on the service name
         taskers = CustomUser.objects.filter(user_type='tasker', service=service_name)
         
@@ -99,3 +100,21 @@ def delete_tasker(request, user_id):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_tasker(request, user_id):
+    data = request.data
+    
+    try:
+        # Assuming each user can update only their own tasker profile
+        tasker = CustomUser.objects.get(id=user_id,user_type = 'tasker')
+    except CustomUser.DoesNotExist:
+        return Response({'error': 'Tasker profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+    
+    serializer = TaskerSerializer(tasker, data=data, partial=True)  # partial=True allows for partial updates
+
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    else:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

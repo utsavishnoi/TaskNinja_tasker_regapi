@@ -6,7 +6,7 @@ from django.contrib.auth.hashers import make_password
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
-        fields = ['name', 'state', 'city', 'full_address','pincode']
+        fields = ['id','name', 'state', 'city', 'full_address','pincode']
 
     def create(self, validated_data):
         user = self.context['user']
@@ -55,3 +55,26 @@ class TaskerSerializer(serializers.ModelSerializer):
             Address.objects.create(user=user, **address_data)
 
         return user
+    def update(self, instance, validated_data):
+        addresses_data = validated_data.pop('addresses', None)
+        
+        if 'password' in validated_data:
+            instance.password = make_password(validated_data.pop('password'))
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if addresses_data is not None:
+            for address_data in addresses_data:
+                address_instance, created = Address.objects.get_or_create(
+                    user=instance,
+                    id=address_data.get('id'),
+                    defaults=address_data
+                )
+                if not created:
+                    for attr, value in address_data.items():
+                        setattr(address_instance, attr, value)
+                    address_instance.save()
+
+        return instance
