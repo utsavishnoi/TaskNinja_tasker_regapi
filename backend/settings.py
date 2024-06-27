@@ -101,7 +101,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'user_tasker_db',
+        'NAME': 'tu_db',
         'USER': 'root',
         'PASSWORD': 'tech@901',
         'HOST': 'localhost',

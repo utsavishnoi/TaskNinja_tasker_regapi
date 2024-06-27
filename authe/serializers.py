@@ -1,10 +1,10 @@
-
 from rest_framework import serializers
-from django.contrib.auth import get_user_model
-from .models import Address
-from django.db import transaction
+from .models import CustomUser,Address,TaskerSkillProof
+from rest_framework.exceptions import ValidationError
 from django.contrib.auth.hashers import make_password
-from django.core.exceptions import ValidationError as DjangoValidationError
+from django.contrib.auth import get_user_model
+from django.db import transaction
+
 
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
@@ -12,7 +12,9 @@ class AddressSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'state', 'city', 'pincode', 'full_address']
 
     def create(self, validated_data):
-        return Address.objects.create(**validated_data)
+        user = self.context['request'].user  # Assuming you want to associate with the authenticated user
+        address = Address.objects.create(user=user, **validated_data)
+        return address
 
     def update(self, instance, validated_data):
         instance.name = validated_data.get('name', instance.name)
@@ -38,7 +40,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         addresses_data = validated_data.pop('addresses', [])
 
-        validated_data['password'] = make_password(validated_data['password'])
+        #validated_data['password'] = make_password(validated_data['password'])
 
         with transaction.atomic():
             try:
@@ -109,3 +111,61 @@ class CustomUserSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Failed to update user. Please try again later.")
 
         return instance
+
+class TaskerSerializer(serializers.ModelSerializer):
+    addresses = AddressSerializer(many=True)
+    skill_proof_pdf = serializers.FileField(required=True)  # Adjust this field as per your requirement
+
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'password', 'service', 'experience',
+                  'price', 'about', 'addresses', 'contact_number', 'skill_proof_pdf']
+        extra_kwargs = {'password': {'write_only': True}}
+
+    def create(self, validated_data):
+        addresses_data = validated_data.pop('addresses')
+        skill_proof_pdf = validated_data.pop('skill_proof_pdf')
+
+        validated_data['password'] = make_password(validated_data['password'])
+        validated_data['user_type'] = 'tasker'
+
+        # Create the tasker user
+        tasker = CustomUser.objects.create(**validated_data)
+
+        # Create addresses associated with the tasker
+        for address_data in addresses_data:
+            Address.objects.create(user=tasker, **address_data)
+
+        # Create TaskerSkillProof for the tasker
+        TaskerSkillProof.objects.create(tasker=tasker, pdf=skill_proof_pdf)
+
+        return tasker
+
+    def update(self, instance, validated_data):
+        addresses_data = validated_data.pop('addresses')
+
+        if 'password' in validated_data:
+            instance.password = make_password(validated_data.pop('password'))
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # Update addresses associated with the tasker
+        for address_data in addresses_data:
+            address_instance, created = Address.objects.get_or_create(
+                user=instance,
+                id=address_data.get('id'),
+                defaults=address_data
+            )
+            if not created:
+                for attr, value in address_data.items():
+                    setattr(address_instance, attr, value)
+                address_instance.save()
+
+        return instance
+
+class TaskerSkillProofSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TaskerSkillProof
+        fields = ['id', 'tasker', 'pdf', 'uploaded_at']
