@@ -52,4 +52,6 @@ def request_list_user(request, user_id):
     else:
         # Handle case where user_type is not 'user'
         return Response(status=status.HTTP_400_BAD_REQUEST)
+    
+
 
