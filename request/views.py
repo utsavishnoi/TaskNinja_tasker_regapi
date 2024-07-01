@@ -94,4 +94,26 @@ def cancellation(request, req_id):
 def reject_request(request,req_id):
       req_instance = get_object_or_404(Request,req_id=req_id)
       current_user = request.user
+      if current_user.user_type == 'tasker':
+          req_instance.status = 4
+          req_instance.save()
+
+          return Response({"Request Rejected !"},status=status.HTTP_200_OK)
+      else:
+          return Response({"error": "You can't reject this request."},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def accept_request(request,req_id):
+    req_instance = get_object_or_404(Request,req_id=req_id)
+    current_user = request.user
+    if current_user.user_type == 'tasker':
+        req_instance.status = 2
+        req_instance.save()
+
+        return Response({"Request Accepted !"},status=status.HTTP_200_OK)
+    else:
+          return Response({"error": "You can't accept this request."},
+                        status=status.HTTP_400_BAD_REQUEST)       
 
