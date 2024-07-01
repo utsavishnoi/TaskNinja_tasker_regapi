@@ -67,27 +67,29 @@ def request_list(request):
 def cancellation(request, req_id):
     req_instance = get_object_or_404(Request, req_id=req_id)
     current_user_id = request.user.id  # Get ID of the currently authenticated user
-
-    # Check if the requester is the user or tasker associated with the request
-    if req_instance.user.id == current_user_id or req_instance.tasker.id == current_user_id:
-        # Calculate the cancellation window (6 hours before service_date)
-        cancellation_window = req_instance.service_date - timedelta(hours=6)
-        
-        # Check if current time is within the cancellation window
-        current_time = timezone.now()
-        if current_time >= cancellation_window:
-            return Response({"error": "Cancellation not allowed within 6 hours of service_date."},
+    if req_instance.status == 2 or request.user.type == 'user':
+        # Check if the requester is the user or tasker associated with the request
+        if req_instance.user.id == current_user_id or req_instance.tasker.id == current_user_id:
+            # Calculate the cancellation window (6 hours before service_date)
+            cancellation_window = req_instance.service_date - timedelta(hours=6)
+            
+            # Check if current time is within the cancellation window
+            current_time = timezone.now()
+            if current_time >= cancellation_window:
+                return Response({"error": "Cancellation not allowed within 6 hours of service_date."},
+                                status=status.HTTP_400_BAD_REQUEST)
+            
+            # Update request status to indicate cancellation
+            req_instance.status = 3 
+            req_instance.save()
+            
+            return Response({"message": "Request successfully cancelled."},
+                            status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "You can't cancel this request."},
                             status=status.HTTP_400_BAD_REQUEST)
-        
-        # Update request status to indicate cancellation
-        req_instance.status = 3 
-        req_instance.save()
-        
-        return Response({"message": "Request successfully cancelled."},
-                        status=status.HTTP_200_OK)
     else:
-        return Response({"error": "You can't cancel this request."},
-                        status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error: Can't cancel a request which is not booked"})
 
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
