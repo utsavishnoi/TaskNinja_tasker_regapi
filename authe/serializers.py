@@ -1,10 +1,9 @@
 from rest_framework import serializers
-from .models import CustomUser,Address,TaskerSkillProof
-from rest_framework.exceptions import ValidationError
-from django.contrib.auth.hashers import make_password
+from .models import CustomUser, Address, TaskerSkillProof
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.contrib.auth.hashers import make_password
 from django.db import transaction
-
 
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
@@ -29,6 +28,7 @@ class AddressSerializer(serializers.ModelSerializer):
         model = Address
         fields = ['id', 'name', 'state', 'city', 'pincode', 'full_address']
 
+        
 class CustomUserSerializer(serializers.ModelSerializer):
     addresses = AddressSerializer(many=True, required=False)
 
@@ -40,8 +40,6 @@ class CustomUserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         addresses_data = validated_data.pop('addresses', [])
 
-        #validated_data['password'] = make_password(validated_data['password'])
-
         with transaction.atomic():
             try:
                 user = get_user_model().objects.create_user(**validated_data)
@@ -50,15 +48,10 @@ class CustomUserSerializer(serializers.ModelSerializer):
                     Address.objects.create(user=user, **address_data)
 
             except serializers.ValidationError as e:
-                logger.error(f"Validation error during user creation: {str(e)}")
                 raise e
-
             except DjangoValidationError as e:
-                logger.error(f"Django validation error during user creation: {str(e)}")
-                raise serializers.ValidationError("Failed to create user. Please try again later.")
-
+                raise serializers.ValidationError(str(e))
             except Exception as e:
-                logger.error(f"Unexpected error during user creation: {str(e)}")
                 raise serializers.ValidationError("Failed to create user. Please try again later.")
 
         return user
@@ -86,7 +79,6 @@ class CustomUserSerializer(serializers.ModelSerializer):
                     if address_id:
                         address = existing_addresses.pop(address_id, None)
                         if address:
-                            # Update existing address
                             address_serializer = AddressSerializer(instance=address, data=address_data)
                             if address_serializer.is_valid():
                                 address_serializer.save()
@@ -95,77 +87,74 @@ class CustomUserSerializer(serializers.ModelSerializer):
                         else:
                             raise serializers.ValidationError(f"Address with id '{address_id}' does not exist for this user.")
                     else:
-                        # Create new address
                         Address.objects.create(user=instance, **address_data)
 
-                # Delete addresses not in addresses_data
                 for address in existing_addresses.values():
                     address.delete()
 
             except serializers.ValidationError as e:
-                logger.error(f"Validation error during user update: {str(e)}")
                 raise e
-
             except Exception as e:
-                logger.error(f"Unexpected error during user update: {str(e)}")
                 raise serializers.ValidationError("Failed to update user. Please try again later.")
 
         return instance
 
-class TaskerSerializer(serializers.ModelSerializer):
-    addresses = AddressSerializer(many=True)
-    skill_proof_pdf = serializers.FileField(required=True)  # Adjust this field as per your requirement
-
+class TaskerSerializer(CustomUserSerializer):
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'password', 'service', 'experience',
-                  'price', 'about', 'addresses', 'contact_number', 'skill_proof_pdf']
+        fields = ('id', 'username', 'first_name', 'last_name', 'email', 'password', 'contact_number',
+                  'about', 'service', 'experience', 'price', 'addresses')
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
-        addresses_data = validated_data.pop('addresses')
-        skill_proof_pdf = validated_data.pop('skill_proof_pdf')
+        addresses_data = validated_data.pop('addresses', [])
 
-        validated_data['password'] = make_password(validated_data['password'])
         validated_data['user_type'] = 'tasker'
 
-        # Create the tasker user
-        tasker = CustomUser.objects.create(**validated_data)
+        with transaction.atomic():
+            try:
+                validated_data['password'] = make_password(validated_data['password'])
+                tasker = super().create(validated_data)
 
-        # Create addresses associated with the tasker
-        for address_data in addresses_data:
-            Address.objects.create(user=tasker, **address_data)
+                for address_data in addresses_data:
+                    Address.objects.create(user=tasker, **address_data)
 
-        # Create TaskerSkillProof for the tasker
-        TaskerSkillProof.objects.create(tasker=tasker, pdf=skill_proof_pdf)
+            except serializers.ValidationError as e:
+                raise e
+            except Exception as e:
+                raise serializers.ValidationError("Failed to create tasker. Please try again later.")
 
         return tasker
 
     def update(self, instance, validated_data):
-        addresses_data = validated_data.pop('addresses')
+        addresses_data = validated_data.pop('addresses', [])
 
-        if 'password' in validated_data:
-            instance.password = make_password(validated_data.pop('password'))
+        instance = super().update(instance, validated_data)
 
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
+        with transaction.atomic():
+            try:
+                existing_addresses = {address.id: address for address in instance.addresses.all()}
+                for address_data in addresses_data:
+                    address_id = address_data.get('id')
+                    if address_id:
+                        address = existing_addresses.pop(address_id, None)
+                        if address:
+                            address_serializer = AddressSerializer(instance=address, data=address_data)
+                            if address_serializer.is_valid():
+                                address_serializer.save()
+                            else:
+                                raise serializers.ValidationError(address_serializer.errors)
+                        else:
+                            raise serializers.ValidationError(f"Address with id '{address_id}' does not exist for this user.")
+                    else:
+                        Address.objects.create(user=instance, **address_data)
 
-        # Update addresses associated with the tasker
-        for address_data in addresses_data:
-            address_instance, created = Address.objects.get_or_create(
-                user=instance,
-                id=address_data.get('id'),
-                defaults=address_data
-            )
-            if not created:
-                for attr, value in address_data.items():
-                    setattr(address_instance, attr, value)
-                address_instance.save()
+                for address in existing_addresses.values():
+                    address.delete()
+
+            except serializers.ValidationError as e:
+                raise e
+            except Exception as e:
+                raise serializers.ValidationError("Failed to update tasker. Please try again later.")
 
         return instance
-
-class TaskerSkillProofSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TaskerSkillProof
-        fields = ['id', 'tasker', 'pdf', 'uploaded_at']
