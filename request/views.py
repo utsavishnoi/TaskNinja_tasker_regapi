@@ -6,6 +6,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from authe.models import CustomUser
 from .models import Request
+from django.utils import timezone
+from datetime import timedelta, datetime
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -14,7 +16,7 @@ def send_req(request):
     request_serializer = RequestSerializer(data=data)
     
     if request_serializer.is_valid():
-        user = request_serializer.validated_data.get('user')
+        user = request.user
         tasker = request_serializer.validated_data.get('tasker')
         
         try:
@@ -39,19 +41,57 @@ from django.shortcuts import get_object_or_404
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def request_list_user(request, user_id):
-    req_list = Request.objects.filter(user=user_id)
-    user = get_object_or_404(CustomUser, id=user_id)
-    if user.user_type == 'user':
-        # Assuming req_list is a queryset, you might want to serialize it or process it further
-        # For example, if using Django REST Framework, you might serialize req_list
-        # serializer = RequestSerializer(req_list, many=True)
-        # return Response(serializer.data, status=status.HTTP_200_OK)
+def request_list(request):
+    current_user_id = request.user.id
+    
+    # Determine if the current user is a 'user' or 'tasker' based on user_type
+    try:
+        user = CustomUser.objects.get(id=current_user_id)
+        if user.user_type == 'user':
+            req_list = Request.objects.filter(user=current_user_id)
+        elif user.user_type == 'tasker':
+            req_list = Request.objects.filter(tasker=current_user_id)
+        else:
+            return Response({"error": "Invalid user type."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        
         serializer = RequestSerializer(req_list, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    else:
-        # Handle case where user_type is not 'user'
-        return Response(status=status.HTTP_400_BAD_REQUEST)
     
+    except CustomUser.DoesNotExist:
+        return Response({"error": "User not found."},
+                        status=status.HTTP_404_NOT_FOUND)
 
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def cancellation(request, req_id):
+    req_instance = get_object_or_404(Request, req_id=req_id)
+    current_user_id = request.user.id  # Get ID of the currently authenticated user
+
+    # Check if the requester is the user or tasker associated with the request
+    if req_instance.user.id == current_user_id or req_instance.tasker.id == current_user_id:
+        # Calculate the cancellation window (6 hours before service_date)
+        cancellation_window = req_instance.service_date - timedelta(hours=6)
+        
+        # Check if current time is within the cancellation window
+        current_time = timezone.now()
+        if current_time >= cancellation_window:
+            return Response({"error": "Cancellation not allowed within 6 hours of service_date."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        
+        # Update request status to indicate cancellation
+        req_instance.status = 3 
+        req_instance.save()
+        
+        return Response({"message": "Request successfully cancelled."},
+                        status=status.HTTP_200_OK)
+    else:
+        return Response({"error": "You can't cancel this request."},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def reject_request(request,req_id):
+      req_instance = get_object_or_404(Request,req_id=req_id)
+      current_user = request.user
 
