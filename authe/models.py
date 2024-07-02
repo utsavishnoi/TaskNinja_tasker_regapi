@@ -21,7 +21,8 @@ class CustomUser(AbstractUser):
     ]
 
     experience = models.CharField(max_length=20, choices=EXPERIENCE_CHOICES, blank=True, null=True)
-    price = models.IntegerField(blank=True, null=True)
+    price = models.DecimalField(blank=True, decimal_places=2,max_digits=5,null = True)
+    price_per_day = models.DecimalField(blank=True, decimal_places=2,max_digits=5,null = True)
     skill_proof_pdf = models.CharField(max_length=1024, blank=True, null=True)
     is_verified = models.BooleanField(default=False)
     groups = models.ManyToManyField(Group, related_name='custom_user_groups')
@@ -51,3 +52,5 @@ class TaskerSkillProof(models.Model):
 
     def __str__(self):
         return f"Tasker Skill Proof for {self.tasker.username}"
+    
+    

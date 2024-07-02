@@ -60,7 +60,8 @@ INSTALLED_APPS = [
     'authe',
     'rest_framework',
     'corsheaders',
-    'api'
+    'api',
+    'request',
 ]
 
 MIDDLEWARE = [
@@ -257,3 +258,5 @@ LOGGING = {
         },
     },
 }
+
+SESSION_COOKIE_AGE = 600

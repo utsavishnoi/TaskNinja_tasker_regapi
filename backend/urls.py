@@ -9,4 +9,5 @@ urlpatterns = [
     path('api-auth/', include('rest_framework.urls')),
     path('', include('authe.urls')),  # Adjust 'authe.urls' path if the app name is different
     path('api/', include('api.urls')),
+    path('', include ('request.urls'))
 ]

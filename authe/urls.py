@@ -1,7 +1,6 @@
 from django.urls import path, include
 from . import views
 from .views import UserDataView,AddressUpdateView,AddressCreateView,delete_user
-
 urlpatterns = [
     path('home/', views.HomeView.as_view(), name ='home'),
     path('user/register/',views.register_user,name = 'register user'),
@@ -14,4 +13,5 @@ urlpatterns = [
     path('api/addresses/update/<str:id>/', AddressUpdateView.as_view(), name='address-update'),
     path('api/addresses/delete/<int:id>/',delete_user , name='address-delete'),
     path('users/<str:username>/addresses/', AddressCreateView.as_view(), name='address-create'),
+    
     ]

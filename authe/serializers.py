@@ -5,24 +5,24 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.contrib.auth.hashers import make_password
 from django.db import transaction
 
-class AddressSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Address
-        fields = ['id', 'name', 'state', 'city', 'pincode', 'full_address']
+# class AddressSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Address
+#         fields = ['id', 'name', 'state', 'city', 'pincode', 'full_address']
 
-    def create(self, validated_data):
-        user = self.context['request'].user  # Assuming you want to associate with the authenticated user
-        address = Address.objects.create(user=user, **validated_data)
-        return address
+#     def create(self, validated_data):
+#         user = self.context['request'].user  # Assuming you want to associate with the authenticated user
+#         address = Address.objects.create(user=user, **validated_data)
+#         return address
 
-    def update(self, instance, validated_data):
-        instance.name = validated_data.get('name', instance.name)
-        instance.state = validated_data.get('state', instance.state)
-        instance.city = validated_data.get('city', instance.city)
-        instance.pincode = validated_data.get('pincode', instance.pincode)
-        instance.full_address = validated_data.get('full_address', instance.full_address)
-        instance.save()
-        return instance
+#     def update(self, instance, validated_data):
+#         instance.name = validated_data.get('name', instance.name)
+#         instance.state = validated_data.get('state', instance.state)
+#         instance.city = validated_data.get('city', instance.city)
+#         instance.pincode = validated_data.get('pincode', instance.pincode)
+#         instance.full_address = validated_data.get('full_address', instance.full_address)
+#         instance.save()
+#         return instance
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
@@ -103,7 +103,7 @@ class TaskerSerializer(CustomUserSerializer):
     class Meta:
         model = CustomUser
         fields = ('id', 'username', 'first_name', 'last_name', 'email', 'password', 'contact_number',
-                  'about', 'service', 'experience', 'price', 'addresses')
+                  'about', 'service', 'experience', 'price', 'addresses','price_per_day')
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
@@ -113,7 +113,7 @@ class TaskerSerializer(CustomUserSerializer):
 
         with transaction.atomic():
             try:
-                validated_data['password'] = make_password(validated_data['password'])
+                # validated_data['password'] = make_password(validated_data['password'])
                 tasker = super().create(validated_data)
 
                 for address_data in addresses_data:
