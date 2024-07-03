@@ -24,8 +24,6 @@ class CustomUser(AbstractUser):
     price = models.DecimalField(blank=True, decimal_places=2,max_digits=5,null = True)
     price_per_day = models.DecimalField(blank=True, decimal_places=2,max_digits=5,null = True)
     is_verified = models.BooleanField(default=False)
-    groups = models.ManyToManyField(Group, related_name='custom_user_groups')
-    user_permissions = models.ManyToManyField(Permission, related_name='custom_user_permissions')
     is_approved = models.BooleanField(default=False)
     def __str__(self):
         return self.username

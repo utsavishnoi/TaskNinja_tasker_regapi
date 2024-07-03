@@ -70,7 +70,8 @@ def list_taskers_by_service(request, service_name):
         taskers = CustomUser.objects.filter(
             user_type='tasker',
             service=service_name,
-            addresses__pincode__in=pincodes
+            addresses__pincode__in=pincodes,
+            is_approved = True
         ).distinct()
 
         if taskers.exists():
