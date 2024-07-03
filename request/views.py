@@ -1,4 +1,3 @@
-from datetime import datetime, date
 from .serializers import RequestSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
@@ -13,7 +12,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from authe.models import CustomUser,Address
+from authe.models import CustomUser
 from django.utils.timezone import now
 
 @api_view(['POST'])
