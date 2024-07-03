@@ -7,7 +7,8 @@ class Request(models.Model):  # Inherit from models.Model
         (1, 'Requested'),
         (2, 'Booked'),
         (3, 'Cancelled'),
-        (4, 'Rejected')
+        (4, 'Rejected'),
+        (5, 'Completed')
     ]
     
     req_id = models.AutoField(primary_key=True)
