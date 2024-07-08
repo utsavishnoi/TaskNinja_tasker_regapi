@@ -129,7 +129,7 @@ def reject_request(request, req_id):
     req_instance = get_object_or_404(Request, req_id=req_id)
     current_user = request.user
 
-    if current_user.user_type == 'tasker':
+    if current_user.user_type == 'tasker' and req_instance.tasker == current_user:
         req_instance.status = 4
         req_instance.save()
         return Response({"Request Rejected !"}, status=status.HTTP_200_OK)
@@ -143,7 +143,7 @@ def accept_request(request, req_id):
     req_instance = get_object_or_404(Request, req_id=req_id)
     current_user = request.user
 
-    if current_user.user_type == 'tasker':
+    if current_user.user_type == 'tasker' and req_instance.tasker == current_user:
         req_instance.status = 2
         req_instance.save()
         return Response({"Request Accepted !"}, status=status.HTTP_200_OK)
