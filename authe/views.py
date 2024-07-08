@@ -55,23 +55,32 @@ def register_tasker(request):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from django.core.exceptions import ObjectDoesNotExist
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def list_taskers_by_service(request, service_name):
+def list_taskers_by_service(request, service_name, address_id):
     try:
         user = request.user
         if user.user_type == 'tasker':
             return Response({"error": "Taskers cannot fetch other taskers."}, status=status.HTTP_403_FORBIDDEN)
 
-        # Get all pincodes associated with the user's addresses
-        pincodes = user.addresses.values_list('pincode', flat=True)
+        try:
+            address = user.addresses.get(id=address_id)
+            pincode = address.pincode
+        except ObjectDoesNotExist:
+            return Response({"error": "Address not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Fetch taskers based on the service name and matching any of the user's pincodes
+        # Fetch taskers based on the service name and matching the user's address pincode
         taskers = CustomUser.objects.filter(
             user_type='tasker',
             service=service_name,
-            addresses__pincode__in=pincodes,
-            is_approved = True
+            addresses__pincode=pincode,
+            is_approved=True
         ).distinct()
 
         if taskers.exists():
@@ -80,8 +89,11 @@ def list_taskers_by_service(request, service_name):
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
             return Response({"error": "No taskers found for this service and pincode."}, status=status.HTTP_404_NOT_FOUND)
+    except ObjectDoesNotExist:
+        return Response({"error": "Invalid user."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
