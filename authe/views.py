@@ -9,20 +9,60 @@ from rest_framework.response import Response
 from urllib.parse import unquote
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
+from utility.sms_helper import SmsHelper
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def send_otp_view(request):
+    phone_number ="+91"+ request.data.get('contact_number')
+    if not phone_number:
+        return Response({"error": "Phone number is required."}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        SmsHelper.send_otp(phone_number)
+        return Response({"message": "OTP sent successfully."}, status=status.HTTP_200_OK)
+    except CustomUser.DoesNotExist:
+        return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
     if request.method == 'POST':
         data = request.data.copy()
+        otp = data.pop('otp')  # Extract OTP from the request data
         
         # Serialize the user data
         user_serializer = CustomUserSerializer(data=data)
         
-        # Validate and save user data
         if user_serializer.is_valid():
-            user_serializer.save()
-            return Response(user_serializer.data, status=status.HTTP_201_CREATED)
+            phone_number = "+91" + user_serializer.validated_data.get('contact_number')
+            
+            if not phone_number:
+                return Response({"error": "Contact number is required."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if not otp:
+                return Response({"error": "OTP is required."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            try:
+                # Verify the OTP
+                verification_status = SmsHelper.verify_otp(phone_number, otp)
+                
+                if verification_status == "approved":
+                    with transaction.atomic():
+                        user = user_serializer.save()
+                        user.is_verified = True
+                        user.save()
+                    
+                    return Response(user_serializer.data, status=status.HTTP_201_CREATED)
+                else:
+                    return Response({"error": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -30,28 +70,36 @@ def register_user(request):
 @permission_classes([AllowAny])
 def register_tasker(request):
     if request.method == 'POST':
+        data = request.data.copy()
+        otp = data.pop('otp',None)
         serializer = TaskerSerializer(data=request.data)
         
         if serializer.is_valid():
+            phone_number = serializer.validated_data.get('contact_number')
             addresses_data = serializer.validated_data.pop('addresses', [])
             skill_proof_pdf = request.data.get('skill_proof_pdf')  # Extract file data
+            if not phone_number :
+                return Response({"error": "Contact number is required."}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                with transaction.atomic():
+                    try:
+                        verification_status = SmsHelper.verify_otp(phone_number, otp)
+                        if(verification_status == "approved"):
+                            with transaction.atomic():
+                                tasker = serializer.save()   
+                                for address_data in addresses_data:
+                                    Address.objects.create(user=tasker, **address_data)
 
-            with transaction.atomic():
-                try:
-                    tasker = serializer.save()
-                    for address_data in addresses_data:
-                        Address.objects.create(user=tasker, **address_data)
+                                TaskerSkillProof.objects.create(tasker=tasker, pdf=skill_proof_pdf)  # Save skill proof PDF
 
-                    TaskerSkillProof.objects.create(tasker=tasker, pdf=skill_proof_pdf)  # Save skill proof PDF
+                    except serializers.ValidationError as e:
+                        return Response(e, status=status.HTTP_400_BAD_REQUEST)
+                    except DjangoValidationError as e:
+                        return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
+                    except Exception as e:
+                        return Response("Failed to create tasker. Please try again later.", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-                except serializers.ValidationError as e:
-                    return Response(e, status=status.HTTP_400_BAD_REQUEST)
-                except DjangoValidationError as e:
-                    return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
-                except Exception as e:
-                    return Response("Failed to create tasker. Please try again later.", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

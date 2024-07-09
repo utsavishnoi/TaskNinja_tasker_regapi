@@ -14,13 +14,14 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 import os
-
+import environ
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
+env = environ.Env()
+environ.Env.read_env(env_file=str(BASE_DIR) + '/.env')
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
@@ -60,7 +61,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'api',
-    'request'
+    'request',
+    'utility'
 ]
 
 MIDDLEWARE = [
@@ -163,3 +165,7 @@ CORS_ALLOWED_ORIGINS = [
 AUTH_USER_MODEL = 'authe.CustomUser'
 
 
+class TwilioConstants:
+    TWILIO_ACCOUNT_SID = env("TWILIO_ACCOUNT_SID")
+    TWILIO_AUTH_TOKEN = env("TWILIO_AUTH_TOKEN")
+    TWILIO_SERVICE_SID = env("TWILIO_SERVICE_SID")
