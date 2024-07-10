@@ -71,11 +71,11 @@ def register_user(request):
 def register_tasker(request):
     if request.method == 'POST':
         data = request.data.copy()
-        otp = data.pop('otp',None)
+        otp = data.pop('otp')
         serializer = TaskerSerializer(data=request.data)
         
         if serializer.is_valid():
-            phone_number = serializer.validated_data.get('contact_number')
+            phone_number = "+91"+serializer.validated_data.get('contact_number')
             addresses_data = serializer.validated_data.pop('addresses', [])
             skill_proof_pdf = request.data.get('skill_proof_pdf')  # Extract file data
             if not phone_number :
