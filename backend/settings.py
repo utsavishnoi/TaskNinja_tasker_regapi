@@ -14,13 +14,14 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 import os
-
+import environ
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
+env = environ.Env()
+environ.Env.read_env(env_file=str(BASE_DIR) + '/.env')
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
@@ -42,9 +43,8 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS TOKEN LIFETIME": timedelta(minutes=30),
+    "ACESS TOKEN LIFETIME": timedelta(minutes=30),
     "REFRESH TOKEN LIFETIME": timedelta(days=1),
-    'AUTH_HEADER_TYPES': ('Bearer')
 }
 
 
@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'api',
     'request',
+    'utility'
 ]
 
 MIDDLEWARE = [
@@ -72,7 +73,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "corsheaders.middleware.CorsMiddleware"
+    "corsheaders.middleware.CorsMiddleware",
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -164,99 +165,26 @@ CORS_ALLOWED_ORIGINS = [
 AUTH_USER_MODEL = 'authe.CustomUser'
 
 
-STATES_AND_UTS_CHOICES = [
-        ('Andaman and Nicobar Islands', 'Andaman and Nicobar Islands'),
-        ('Andhra Pradesh', 'Andhra Pradesh'),
-        ('Arunachal Pradesh', 'Arunachal Pradesh'),
-        ('Assam', 'Assam'),
-        ('Bihar', 'Bihar'),
-        ('Chandigarh', 'Chandigarh'),
-        ('Chhattisgarh', 'Chhattisgarh'),
-        ('Dadra and Nagar Haveli', 'Dadra and Nagar Haveli'),
-        ('Daman and Diu', 'Daman and Diu'),
-        ('Delhi', 'Delhi'),
-        ('Goa', 'Goa'),
-        ('Gujarat', 'Gujarat'),
-        ('Haryana', 'Haryana'),
-        ('Himachal Pradesh', 'Himachal Pradesh'),
-        ('Jammu and Kashmir', 'Jammu and Kashmir'),
-        ('Jharkhand', 'Jharkhand'),
-        ('Karnataka', 'Karnataka'),
-        ('Kerala', 'Kerala'),
-        ('Ladakh', 'Ladakh'),
-        ('Lakshadweep', 'Lakshadweep'),
-        ('Madhya Pradesh', 'Madhya Pradesh'),
-        ('Maharashtra', 'Maharashtra'),
-        ('Manipur', 'Manipur'),
-        ('Meghalaya', 'Meghalaya'),
-        ('Mizoram', 'Mizoram'),
-        ('Nagaland', 'Nagaland'),
-        ('Odisha', 'Odisha'),
-        ('Puducherry', 'Puducherry'),
-        ('Punjab', 'Punjab'),
-        ('Rajasthan', 'Rajasthan'),
-        ('Sikkim', 'Sikkim'),
-        ('Tamil Nadu', 'Tamil Nadu'),
-        ('Telangana', 'Telangana'),
-        ('Tripura', 'Tripura'),
-        ('Uttar Pradesh', 'Uttar Pradesh'),
-        ('Uttarakhand', 'Uttarakhand'),
-        ('West Bengal', 'West Bengal')
-    ]
+# import environ
 
-SERVICES_CHOICES = [
-        ('Packers and Movers', 'Packers and Movers'),
-        ('Plumber', 'Plumber'),
-        ('Electrician', 'Electrician'),
-        ('Cleaning Services', 'Cleaning Services'),
-        ('Carpenters', 'Carpenters'),
-        ('Pest Control', 'Pest Control'),
-        ('Painters', 'Painters'),
-        ('AC Services', 'AC Services'),
-        ('Gardening', 'Gardening'),
-        ('Home Security', 'Home Security'),
-        ('Laundry', 'Laundry'),
-        ('Moving Services', 'Moving Services'),
-        ('Home Cleaning', 'Home Cleaning'),
-        ('Furniture Assembly', 'Furniture Assembly'),
-        ('Computer Repair', 'Computer Repair'),
-        ('Interior Design', 'Interior Design')
-    ]
+# env = environ.Env()
 
+# # Load environment variables from a .env file
+# environ.Env.read_env()
 
-# settings.py
+# # Access the TWILIO_ACCOUNT_SID variable
+# TWILIO_ACCOUNT_SID = env('TWILIO_ACCOUNT_SID')
+TWILIO_ACCOUNT_SID = 'US3d80a8cac43f71021a66c37c598827dd'
+TWILIO_AUTH_TOKEN = 'fd9829cf0114ef1af4f5d46bce532a79'
 
-# Logging configuration
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        # Define the file handler for django_errors.log
-        'file': {
-            'level': 'DEBUG',  # Set the desired logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL
-            'class': 'logging.FileHandler',
-            'filename': 'django_errors.log',  # Specify the path to your log file
-            'formatter': 'verbose',
-        },
-    },
-    'formatters': {
-        'verbose': {
-            'format': '{asctime} {levelname} {message} {name}',
-            'style': '{',
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set the desired logging level for the Django logger
-            'propagate': True,
-        },
-        'authe': {  # Replace 'your_app_name' with the name of your Django app
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set the desired logging level for your app's logger
-            'propagate': True,
-        },
-    },
-}
+# Import Twilio Client
+from twilio.rest import Client
 
-SESSION_COOKIE_AGE = 600
+# Initialize Twilio Client
+client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+
+# backend/settings.py
+
+class TwilioConstants:
+    TWILIO_ACCOUNT_SID = 'US3d80a8cac43f71021a66c37c598827dd'
+    TWILIO_AUTH_TOKEN = 'fd9829cf0114ef1af4f5d46bce532a79'

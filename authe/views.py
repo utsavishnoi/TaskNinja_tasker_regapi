@@ -9,20 +9,60 @@ from rest_framework.response import Response
 from urllib.parse import unquote
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
+from utility.sms_helper import SmsHelper
+from twilio.rest import Client
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def send_otp_view(request):
+    phone_number ="+91"+ request.data.get('contact_number')
+    if not phone_number:
+        return Response({"error": "Phone number is required."}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        SmsHelper.send_otp(phone_number)
+        return Response({"message": "OTP sent successfully."}, status=status.HTTP_200_OK)
+    except CustomUser.DoesNotExist:
+        return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
     if request.method == 'POST':
         data = request.data.copy()
+        otp = data.pop('otp')  # Extract OTP from the request data
         
         # Serialize the user data
         user_serializer = CustomUserSerializer(data=data)
         
-        # Validate and save user data
         if user_serializer.is_valid():
-            user_serializer.save()
-            return Response(user_serializer.data, status=status.HTTP_201_CREATED)
+            phone_number = "+91" + user_serializer.validated_data.get('contact_number')
+            
+            if not phone_number:
+                return Response({"error": "Contact number is required."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if not otp:
+                return Response({"error": "OTP is required."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            try:
+                # Verify the OTP
+                verification_status = SmsHelper.verify_otp(phone_number, otp)
+                
+                if verification_status == "approved":
+                    with transaction.atomic():
+                        user = user_serializer.save()
+                        user.is_verified = True
+                        user.save()
+                    
+                    return Response(user_serializer.data, status=status.HTTP_201_CREATED)
+                else:
+                    return Response({"error": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -30,47 +70,65 @@ def register_user(request):
 @permission_classes([AllowAny])
 def register_tasker(request):
     if request.method == 'POST':
+        data = request.data.copy()
+        otp = data.pop('otp',None)
         serializer = TaskerSerializer(data=request.data)
         
         if serializer.is_valid():
+            phone_number = serializer.validated_data.get('contact_number')
             addresses_data = serializer.validated_data.pop('addresses', [])
             skill_proof_pdf = request.data.get('skill_proof_pdf')  # Extract file data
+            if not phone_number :
+                return Response({"error": "Contact number is required."}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                with transaction.atomic():
+                    try:
+                        verification_status = SmsHelper.verify_otp(phone_number, otp)
+                        if(verification_status == "approved"):
+                            with transaction.atomic():
+                                tasker = serializer.save()   
+                                for address_data in addresses_data:
+                                    Address.objects.create(user=tasker, **address_data)
 
-            with transaction.atomic():
-                try:
-                    tasker = serializer.save()
-                    for address_data in addresses_data:
-                        Address.objects.create(user=tasker, **address_data)
+                                TaskerSkillProof.objects.create(tasker=tasker, pdf=skill_proof_pdf)  # Save skill proof PDF
 
-                    TaskerSkillProof.objects.create(tasker=tasker, pdf=skill_proof_pdf)  # Save skill proof PDF
+                    except serializers.ValidationError as e:
+                        return Response(e, status=status.HTTP_400_BAD_REQUEST)
+                    except DjangoValidationError as e:
+                        return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
+                    except Exception as e:
+                        return Response("Failed to create tasker. Please try again later.", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-                except serializers.ValidationError as e:
-                    return Response(e, status=status.HTTP_400_BAD_REQUEST)
-                except DjangoValidationError as e:
-                    return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
-                except Exception as e:
-                    return Response("Failed to create tasker. Please try again later.", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from django.core.exceptions import ObjectDoesNotExist
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def list_taskers_by_service(request, service_name):
+def list_taskers_by_service(request, service_name, address_id):
     try:
         user = request.user
         if user.user_type == 'tasker':
             return Response({"error": "Taskers cannot fetch other taskers."}, status=status.HTTP_403_FORBIDDEN)
 
-        # Get all pincodes associated with the user's addresses
-        pincodes = user.addresses.values_list('pincode', flat=True)
+        try:
+            address = user.addresses.get(id=address_id)
+            pincode = address.pincode
+        except ObjectDoesNotExist:
+            return Response({"error": "Address not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Fetch taskers based on the service name and matching any of the user's pincodes
+        # Fetch taskers based on the service name and matching the user's address pincode
         taskers = CustomUser.objects.filter(
             user_type='tasker',
             service=service_name,
-            addresses__pincode__in=pincodes
+            addresses__pincode=pincode,
+            is_approved=True
         ).distinct()
 
         if taskers.exists():
@@ -79,10 +137,13 @@ def list_taskers_by_service(request, service_name):
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
             return Response({"error": "No taskers found for this service and pincode."}, status=status.HTTP_404_NOT_FOUND)
+    except ObjectDoesNotExist:
+        return Response({"error": "Invalid user."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['GET', 'PUT', 'DELETE'])
+
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def taskerdata(request, pk):
     try:
@@ -93,17 +154,6 @@ def taskerdata(request, pk):
     if request.method == 'GET':
         serializer = TaskerSerializer(tasker)
         return Response(serializer.data)
-
-    elif request.method == 'PUT':
-        serializer = TaskerSerializer(tasker, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    elif request.method == 'DELETE':
-        tasker.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
@@ -200,6 +250,3 @@ def delete_user(request, id):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    
-
-
