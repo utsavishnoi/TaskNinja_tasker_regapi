@@ -105,23 +105,26 @@ def cancellation(request, req_id):
 
     if req_instance.status == 2 or user.user_type == 'user':
         if req_instance.user.id == current_user_id or req_instance.tasker.id == current_user_id:
-            cancellation_window = req_instance.service_date - timedelta(hours=6)
             current_time = timezone.now()
+            cancellation_window = req_instance.service_date - timedelta(hours=6)
 
+            # Allow cancellation if the current time is beyond the service date
+            if current_time > req_instance.service_date:
+                req_instance.status = 3
+                req_instance.save()
+                return Response({"message": "Request successfully cancelled."}, status=status.HTTP_200_OK)
+
+            # Check if the cancellation is within 6 hours of the service date
             if current_time >= cancellation_window:
-                return Response({"error": "Cancellation not allowed within 6 hours of service_date."},
-                                status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Cancellation not allowed within 6 hours of service date."}, status=status.HTTP_400_BAD_REQUEST)
 
-            req_instance.status = 3 
+            req_instance.status = 3
             req_instance.save()
-            return Response({"message": "Request successfully cancelled."},
-                            status=status.HTTP_200_OK)
+            return Response({"message": "Request successfully cancelled."}, status=status.HTTP_200_OK)
         else:
-            return Response({"error": "You can't cancel this request."},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "You can't cancel this request."}, status=status.HTTP_400_BAD_REQUEST)
     else:
-        return Response({"error": "Can't cancel a request which is not booked."},
-                        status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "Can't cancel a request which is not booked."}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
