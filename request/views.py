@@ -4,8 +4,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Request
+from django.utils.timezone import make_aware
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta,datetime
 from django.utils.timezone import now
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, permission_classes
@@ -96,6 +97,7 @@ def requests_history(request):
 
     return Response(response_data, status=status.HTTP_200_OK)
 
+
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def cancellation(request, req_id):
@@ -105,19 +107,29 @@ def cancellation(request, req_id):
 
     if req_instance.status == 2 or user.user_type == 'user':
         if req_instance.user.id == current_user_id or req_instance.tasker.id == current_user_id:
-            current_time = timezone.now()
-            cancellation_window = req_instance.service_date - timedelta(hours=6)
+            current_time = make_aware(datetime.now())
 
-            # Allow cancellation if the current time is beyond the service date
-            if current_time > req_instance.service_date:
+            print("current--->", current_time, "type-->", type(current_time))
+            
+            service_date = req_instance.service_date
+            cancellation_window = service_date - timedelta(hours=6)
+            
+            print("cancellation_window--->", cancellation_window)
+            
+            # Allow cancellation if the service date has passed
+            if current_time > service_date:
                 req_instance.status = 3
                 req_instance.save()
                 return Response({"message": "Request successfully cancelled."}, status=status.HTTP_200_OK)
-
+            
+            # Check if the cancellation is on the same day as the service date
+            if current_time.date() == service_date.date():
+                return Response({"error": "Cancellation not allowed on the same day as the service date."}, status=status.HTTP_400_BAD_REQUEST)
+            
             # Check if the cancellation is within 6 hours of the service date
             if current_time >= cancellation_window:
                 return Response({"error": "Cancellation not allowed within 6 hours of service date."}, status=status.HTTP_400_BAD_REQUEST)
-
+            
             req_instance.status = 3
             req_instance.save()
             return Response({"message": "Request successfully cancelled."}, status=status.HTTP_200_OK)
