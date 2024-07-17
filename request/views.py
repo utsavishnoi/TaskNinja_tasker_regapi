@@ -65,11 +65,10 @@ def request_list(request):
     serializer = RequestSerializer(req_list, many=True)
     response_data = serializer.data
 
-    if user.user_type == 'tasker':
-        for item in response_data:
-            user_details = CustomUser.objects.get(id=item['user'])
-            item['user_name'] = user_details.first_name
-            item['user_contact_number'] = user_details.contact_number
+    for item in response_data:
+        user_details = CustomUser.objects.get(id=item['tasker'])
+        item['tasker_name'] = user_details.first_name
+        item['user_contact_number'] = user_details.contact_number
 
     return Response(response_data, status=status.HTTP_200_OK)
 
@@ -89,11 +88,10 @@ def requests_history(request):
     serializer = RequestSerializer(req_list, many=True)
     response_data = serializer.data
 
-    if user.user_type == 'tasker':
-        for item in response_data:
-            user_details = CustomUser.objects.get(id=item['user'])
-            item['user_name'] = user_details.first_name
-            item['user_contact_number'] = user_details.contact_number
+    for item in response_data:
+        user_details = CustomUser.objects.get(id=item['tasker'])
+        item['user_name'] = user_details.first_name
+        item['user_contact_number'] = user_details.contact_number
 
     return Response(response_data, status=status.HTTP_200_OK)
 
