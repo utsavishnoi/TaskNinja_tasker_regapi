@@ -25,8 +25,18 @@ def send_req(request):
         user = request.user
         tasker = request_serializer.validated_data.get('tasker')
         request_date = request_serializer.validated_data.get('service_date')
-        if request_date.date() < now().date():
+
+        if request_date is None:
+            return Response({'error': 'Service date is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        booking_date = now()
+        three_hours_after_now = booking_date + timedelta(hours=3)
+
+        if request_date.date() < booking_date.date():
             return Response({'error': 'Cannot request with a date in the past'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if request_date > three_hours_after_now:
+            return Response({'error': 'Booking must be at least 3 hours in advance'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             requester_type = user.user_type
@@ -38,17 +48,14 @@ def send_req(request):
         except AttributeError:
             return Response({'error': f'Tasker with id {tasker.id} does not exist'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if requester_type == 'user' and to_request_type == 'tasker': 
-            request_serializer.save()
+        if requester_type == 'user' and to_request_type == 'tasker':
+            request_serializer.save(booking_date=booking_date)
             return Response(request_serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response({'error': 'Unauthorized request type'}, status=status.HTTP_403_FORBIDDEN)
     else:
         # Return detailed validation errors to frontend
         return Response(request_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def request_list(request):
@@ -107,7 +114,7 @@ def cancellation(request, req_id):
         if req_instance.user.id == current_user_id or req_instance.tasker.id == current_user_id:
             current_time = make_aware(datetime.now())
 
-            print("current--->", current_time, "type-->", type(current_time))
+            # print("current--->", current_time, "type-->", type(current_time))
             
             service_date = req_instance.service_date
             cancellation_window = service_date - timedelta(hours=6)
