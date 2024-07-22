@@ -173,7 +173,7 @@ def accept_request(request, req_id):
     if current_user.user_type == 'tasker' and req_instance.tasker == current_user:
         current_time = make_aware(datetime.now())
 
-        if current_time > request.booking_date:
+        if current_time > req_instance.service_date:
             return Response({"error" : "Request Expired"}, status=status.HTTP_403_FORBIDDEN)
         req_instance.status = 2
         req_instance.save()
