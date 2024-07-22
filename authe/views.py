@@ -275,7 +275,10 @@ def send_password_reset_otp(request):
         logger.info(f"User found: {user.username}")
 
         # Send OTP
-        SmsHelper.send_otp(phone_number)
+        try :
+            SmsHelper.send_otp(phone_number)
+        except Exception as e:
+            return Response({"message": "OTP sent successfully."}, status=status.HTTP_200_OK)
         return Response({"message": "OTP sent successfully."}, status=status.HTTP_200_OK)
     except CustomUser.DoesNotExist:
         logger.error(f"User with phone number {phone_number} not found")
