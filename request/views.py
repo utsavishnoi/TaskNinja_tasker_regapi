@@ -72,10 +72,17 @@ def request_list(request):
     serializer = RequestSerializer(req_list, many=True)
     response_data = serializer.data
 
-    for item in response_data:
-        user_details = CustomUser.objects.get(id=item['tasker'])
-        item['tasker_name'] = user_details.first_name
-        item['user_contact_number'] = user_details.contact_number
+    if user.user_type == 'user':
+        for item in response_data:
+            user_details = CustomUser.objects.get(id=item['tasker'])
+            item['tasker_name'] = user_details.first_name
+            item['user_contact_number'] = user_details.contact_number
+    elif user.user_type == 'tasker':
+        for item in response_data:
+            user_details = CustomUser.objects.get(id=item['user'])
+            item['user_name'] = user_details.first_name
+            item['user_contact_number'] = user_details.contact_number
+
 
     return Response(response_data, status=status.HTTP_200_OK)
 
@@ -123,9 +130,9 @@ def cancellation(request, req_id):
             
             # Allow cancellation if the service date has passed
             if current_time > service_date:
-                req_instance.status = 3
-                req_instance.save()
-                return Response({"message": "Request successfully cancelled."}, status=status.HTTP_200_OK)
+                # req_instance.status = 3
+                # req_instance.save()
+                return Response({"error": "Request expired."}, status=status.HTTP_403_FORBIDDEN)
             
             # Check if the cancellation is on the same day as the service date
             if current_time.date() == service_date.date():
@@ -164,6 +171,10 @@ def accept_request(request, req_id):
     current_user = request.user
 
     if current_user.user_type == 'tasker' and req_instance.tasker == current_user:
+        current_time = make_aware(datetime.now())
+
+        if current_time > request.booking_date:
+            return Response({"error" : "Request Expired"}, status=status.HTTP_403_FORBIDDEN)
         req_instance.status = 2
         req_instance.save()
         return Response({"Request Accepted !"}, status=status.HTTP_200_OK)
