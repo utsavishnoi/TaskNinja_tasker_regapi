@@ -17,7 +17,7 @@ TaskNinja API provides RESTful endpoints for user authentication and task manage
 
 1. Clone the repository:
     ```sh
-    git clone [https://github.com/your-repo/django-project.git](https://github.com/utsavishnoi/TaskNinja_tasker_regapi)
+    git clone https://github.com/utsavishnoi/TaskNinja_tasker_regapi
     cd backend
     ```
 
