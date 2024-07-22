@@ -29,13 +29,13 @@ def send_req(request):
         if request_date is None:
             return Response({'error': 'Service date is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        booking_date = now()
+        booking_date = make_aware(datetime.now())
         three_hours_after_now = booking_date + timedelta(hours=3)
 
         if request_date.date() < booking_date.date():
             return Response({'error': 'Cannot request with a date in the past'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if request_date > three_hours_after_now:
+        elif request_date <= three_hours_after_now:
             return Response({'error': 'Booking must be at least 3 hours in advance'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
