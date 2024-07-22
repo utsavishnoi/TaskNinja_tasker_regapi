@@ -6,3 +6,6 @@ admin.site.register(CustomUser)
 admin.site.register(Address)
 admin.site.register(TaskerSkillProof)
 admin.site.register(Request)
+
+
+
