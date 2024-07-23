@@ -15,3 +15,4 @@ class Notification(models.Model):
     message = models.CharField(max_length=100)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     status = models.IntegerField(choices=STATUS_CHOICE, default=0)
+    created_at = models.DateTimeField(auto_now_add=True) 

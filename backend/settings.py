@@ -105,7 +105,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'TaskNinja_db',
         'USER': 'root',
-        'PASSWORD': 'root',
+        'PASSWORD': 'tech@901',
         'HOST': 'localhost',
         'PORT': '3306',
     },

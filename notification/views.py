@@ -5,11 +5,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from request.models import Request
 from .models import Notification
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
 from django.shortcuts import get_object_or_404
+
+
+
 
 
 @api_view(['GET'])
@@ -21,9 +20,9 @@ def get_notification(request):
     else:
         req_list = Request.objects.filter(tasker=current_user.id)
     
-    notifications = Notification.objects.filter(request__in=req_list, user=current_user)
+    # Order notifications by creation date (newest first)
+    notifications = Notification.objects.filter(request__in=req_list, user=current_user).order_by('-created_at')
     serializer = NotificationSerializer(notifications, many=True)
-
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
