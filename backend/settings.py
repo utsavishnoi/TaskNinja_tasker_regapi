@@ -61,7 +61,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'request',
-    'utility'
+    'utility',
+    'notification'
 ]
 
 MIDDLEWARE = [

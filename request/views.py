@@ -14,7 +14,17 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from authe.models import CustomUser
-from django.utils.timezone import now
+from notification.views import create_notification
+import threading,logging
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+
+def create_notifications_async(user, req_instance, message):
+    try:
+        create_notification(user, req_instance, message)
+    except Exception as e:
+        logging.error(f"Failed to create notification for user {user.id}: {e}")
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -49,12 +59,21 @@ def send_req(request):
             return Response({'error': f'Tasker with id {tasker.id} does not exist'}, status=status.HTTP_400_BAD_REQUEST)
 
         if requester_type == 'user' and to_request_type == 'tasker':
-            request_serializer.save(booking_date=booking_date)
+            req_instance = request_serializer.save(booking_date=booking_date)
+
+            thread1 = threading.Thread(target=create_notifications_async, args=(req_instance.user, req_instance, f"Request {req_instance.req_id} requested by you"))
+            thread2 = threading.Thread(target=create_notifications_async, args=(req_instance.tasker, req_instance, f"Request {req_instance.req_id} requested by {req_instance.user.username}"))
+
+            thread1.start()
+            thread2.start()
+
+            thread1.join()
+            thread2.join()
+
             return Response(request_serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response({'error': 'Unauthorized request type'}, status=status.HTTP_403_FORBIDDEN)
     else:
-        # Return detailed validation errors to frontend
         return Response(request_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -126,7 +145,7 @@ def cancellation(request, req_id):
             service_date = req_instance.service_date
             cancellation_window = service_date - timedelta(hours=6)
             
-            print("cancellation_window--->", cancellation_window)
+            # print("cancellation_window--->", cancellation_window)
             
             # Allow cancellation if the service date has passed
             if current_time > service_date:
@@ -144,6 +163,14 @@ def cancellation(request, req_id):
             
             req_instance.status = 3
             req_instance.save()
+            thread1 = threading.Thread(target=create_notifications_async,args=(req_instance.user,req_instance,f"Request {req_instance.req_id} cancelled by {user.username}"))
+            thread2 = threading.Thread(target=create_notifications_async,args=(req_instance.tasker,req_instance,f"Request {req_instance.req_id} cancelled by {user.username}"))
+
+            thread1.start()
+            thread2.start()
+
+            thread1.join()
+            thread2.join()
             return Response({"message": "Request successfully cancelled."}, status=status.HTTP_200_OK)
         else:
             return Response({"error": "You can't cancel this request."}, status=status.HTTP_400_BAD_REQUEST)
@@ -159,6 +186,15 @@ def reject_request(request, req_id):
     if current_user.user_type == 'tasker' and req_instance.tasker == current_user:
         req_instance.status = 4
         req_instance.save()
+
+        thread1 = threading.Thread(target=create_notifications_async,args=(req_instance.user,req_instance,f"Request {req_instance.req_id} rejected by {current_user.username}"))
+        thread2 = threading.Thread(target=create_notifications_async,args=(req_instance.tasker,req_instance,f"Request {req_instance.req_id} rejected by you"))
+
+        thread1.start()
+        thread2.start()
+
+        thread1.join()
+        thread2.join()
         return Response({"Request Rejected !"}, status=status.HTTP_200_OK)
     else:
         return Response({"error": "You can't reject this request."},
@@ -175,9 +211,21 @@ def accept_request(request, req_id):
 
         if current_time > req_instance.service_date:
             return Response({"error" : "Request Expired"}, status=status.HTTP_403_FORBIDDEN)
+        
         req_instance.status = 2
         req_instance.save()
+
+        # Create threads for notifications
+        thread1 = threading.Thread(target=create_notifications_async, args=(req_instance.user, req_instance, f"Request {req_instance.req_id} accepted by {current_user.username}"))
+        thread2 = threading.Thread(target=create_notifications_async, args=(req_instance.tasker, req_instance, f"Request {req_instance.req_id} accepted by you"))
+
+        # Start the threads
+        thread1.start()
+        thread2.start()
+
+        thread1.join()
+        thread2.join()
+
         return Response({"Request Accepted !"}, status=status.HTTP_200_OK)
     else:
-        return Response({"error": "You can't accept this request."},
-                        status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "You can't accept this request."}, status=status.HTTP_400_BAD_REQUEST)
