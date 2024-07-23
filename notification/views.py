@@ -9,6 +9,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from django.shortcuts import get_object_or_404
 
 
 @api_view(['GET'])
@@ -33,3 +34,13 @@ def create_notification(user, req_instance, message):
         request=req_instance,
         message=message,
     )
+
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def read_notification(request,notification_id):
+    user = request.user
+    notification = get_object_or_404(Notification, notification_id=notification_id, user = user )
+    notification.status = 1
+    notification.save()
+    return Response({"message": "Notification marked as read"}, status=status.HTTP_200_OK)
