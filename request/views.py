@@ -94,12 +94,12 @@ def request_list(request):
     if user.user_type == 'user':
         for item in response_data:
             user_details = CustomUser.objects.get(id=item['tasker'])
-            item['tasker_name'] = user_details.first_name
+            item['username'] = user_details.first_name
             item['user_contact_number'] = user_details.contact_number
     elif user.user_type == 'tasker':
         for item in response_data:
             user_details = CustomUser.objects.get(id=item['user'])
-            item['user_name'] = user_details.first_name
+            item['username'] = user_details.first_name
             item['user_contact_number'] = user_details.contact_number
 
 

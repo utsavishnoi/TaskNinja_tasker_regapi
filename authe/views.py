@@ -157,9 +157,8 @@ def taskerdata(request, pk):
     except CustomUser.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    if request.method == 'GET':
-        serializer = TaskerSerializer(tasker)
-        return Response(serializer.data)
+    serializer = TaskerSerializer(tasker)
+    return Response(serializer.data)
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
@@ -186,14 +185,25 @@ def update_tasker(request, user_id):
     
     try:
         # Assuming each user can update only their own tasker profile
-        tasker = CustomUser.objects.get(id=user_id,user_type = 'tasker')
+        tasker = CustomUser.objects.get(id=user_id, user_type='tasker')
     except CustomUser.DoesNotExist:
         return Response({'error': 'Tasker profile not found.'}, status=status.HTTP_404_NOT_FOUND)
     
+    # Retrieve the existing addresses
+    existing_addresses = list(Address.objects.filter(user=tasker))
+
     serializer = TaskerSerializer(tasker, data=data, partial=True)  # partial=True allows for partial updates
 
     if serializer.is_valid():
         serializer.save()
+        
+        # Ensure the existing addresses remain unchanged
+        for address in existing_addresses:
+            address.save()
+        
+        # Refresh the tasker instance to include the reassigned addresses
+        tasker.refresh_from_db()
+        
         return Response(serializer.data, status=status.HTTP_200_OK)
     else:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -232,7 +242,7 @@ class AddressUpdateView(generics.UpdateAPIView):
 def delete_user(add_id, request, *args, **kwargs):
     obj = Address.objects.get(id=add_id)
     obj.delete()
-    return Response(status=status.HTTP_204_NO_CONTENT)
+    return Response({"message":"Address deleted successfully !"},status=status.HTTP_204_NO_CONTENT)
 
     
 class AddressCreateView(generics.CreateAPIView):
@@ -246,7 +256,7 @@ class AddressCreateView(generics.CreateAPIView):
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
-def delete_user(request, id):
+def delete_address(request, id):
     try:
         address = Address.objects.get(id=id, user=request.user)
         address.delete()

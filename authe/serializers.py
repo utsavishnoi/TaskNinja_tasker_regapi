@@ -34,7 +34,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = get_user_model()
-        fields = ('id', 'username', 'first_name', 'last_name', 'email', 'password', 'contact_number', 'addresses','user_type')
+        fields = ('id', 'username', 'first_name', 'last_name', 'email', 'password', 'contact_number', 'addresses','user_type','price','price_per_day')
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
@@ -108,26 +108,25 @@ class TaskerSerializer(CustomUserSerializer):
 
     def create(self, validated_data):
         addresses_data = validated_data.pop('addresses', [])
-
         validated_data['user_type'] = 'tasker'
 
         with transaction.atomic():
             try:
-                # validated_data['password'] = make_password(validated_data['password'])
                 tasker = super().create(validated_data)
-
                 for address_data in addresses_data:
                     Address.objects.create(user=tasker, **address_data)
-
             except serializers.ValidationError as e:
                 raise e
             except Exception as e:
                 raise serializers.ValidationError("Failed to create tasker. Please try again later.")
-
         return tasker
 
     def update(self, instance, validated_data):
         addresses_data = validated_data.pop('addresses', [])
+        
+        # Handle price and price_per_day updates
+        instance.price = validated_data.get('price', instance.price)
+        instance.price_per_day = validated_data.get('price_per_day', instance.price_per_day)
 
         instance = super().update(instance, validated_data)
 
@@ -151,10 +150,9 @@ class TaskerSerializer(CustomUserSerializer):
 
                 for address in existing_addresses.values():
                     address.delete()
-
             except serializers.ValidationError as e:
                 raise e
             except Exception as e:
                 raise serializers.ValidationError("Failed to update tasker. Please try again later.")
-
+        
         return instance
