@@ -16,6 +16,7 @@ from rest_framework import status
 from authe.models import CustomUser
 from notification.views import create_notification
 import threading,logging
+from django.db.models import Case, When, IntegerField
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -88,6 +89,17 @@ def request_list(request):
     else:
         return Response({"error": "Invalid user type."}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Define custom ordering for status
+    status_order = Case(
+        When(status=2, then=0),  # 'Booked' status should come first
+        When(status=1, then=1),  # 'Requested' status should come next
+        default=2,  # All other statuses will come last
+        output_field=IntegerField()
+    )
+
+    # Apply ordering
+    req_list = req_list.order_by(status_order,'booking_date')
+
     serializer = RequestSerializer(req_list, many=True)
     response_data = serializer.data
 
@@ -101,7 +113,6 @@ def request_list(request):
             user_details = CustomUser.objects.get(id=item['user'])
             item['username'] = user_details.first_name
             item['user_contact_number'] = user_details.contact_number
-
 
     return Response(response_data, status=status.HTTP_200_OK)
 
@@ -127,6 +138,37 @@ def requests_history(request):
         item['user_contact_number'] = user_details.contact_number
 
     return Response(response_data, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def request_detail(request, request_id):
+    current_user_id = request.user.id
+    user = request.user
+
+    try:
+        if user.user_type == 'user':
+            req = Request.objects.get(req_id=request_id, user=current_user_id)
+        elif user.user_type == 'tasker':
+            req = Request.objects.get(req_id=request_id, tasker=current_user_id)
+        else:
+            return Response({"error": "Invalid user type."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        
+        serializer = RequestSerializer(req)
+        response_data = serializer.data
+
+        if user.user_type == 'user':
+            user_details = CustomUser.objects.get(id=response_data['tasker'])
+            response_data['username'] = user_details.first_name
+            response_data['user_contact_number'] = user_details.contact_number
+        elif user.user_type == 'tasker':
+            user_details = CustomUser.objects.get(id=response_data['user'])
+            response_data['username'] = user_details.first_name
+            response_data['user_contact_number'] = user_details.contact_number
+
+        return Response(response_data, status=status.HTTP_200_OK)
+    except Request.DoesNotExist:
+        return Response({"error": "Request not found."}, status=status.HTTP_404_NOT_FOUND)
 
 
 @api_view(['PUT'])
@@ -229,3 +271,4 @@ def accept_request(request, req_id):
         return Response({"Request Accepted !"}, status=status.HTTP_200_OK)
     else:
         return Response({"error": "You can't accept this request."}, status=status.HTTP_400_BAD_REQUEST)
+    

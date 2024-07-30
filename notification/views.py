@@ -6,8 +6,7 @@ from rest_framework import status
 from request.models import Request
 from .models import Notification
 from django.shortcuts import get_object_or_404
-
-
+from request.models import Request
 
 
 
@@ -43,3 +42,17 @@ def read_notification(request,notification_id):
     notification.status = 1
     notification.save()
     return Response({"message": "Notification marked as read"}, status=status.HTTP_200_OK)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_notification(request,notification_id):
+    user = request.user
+    notification = Notification.objects.get(notification_id=notification_id,user=user,)
+    if(notification):
+        notification.delete()
+        return Response({"message":"Notification deleted successfully"},status = status.HTTP_200_OK)
+    else:
+        return Response({"error":"Notification not found"})
+
+    
